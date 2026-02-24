@@ -25,6 +25,7 @@ const App = () => (
           <Route path="/material" element={<MaterialSelection />} />
           <Route path="/upload" element={<ImageUpload />} />
           <Route path="/results" element={<Results />} />
+          <Route path="/reports" element={<Reports />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

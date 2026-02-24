@@ -4,7 +4,7 @@ import { LayoutDashboard, Plus, FileText, Settings, LogOut, Shield } from "lucid
 const navItems = [
   { title: "Dashboard", icon: LayoutDashboard, path: "/results" },
   { title: "New Inspection", icon: Plus, path: "/modality" },
-  { title: "Reports", icon: FileText, path: "#" },
+  { title: "Reports", icon: FileText, path: "/reports" },
   { title: "Settings", icon: Settings, path: "#" },
 ];
 
