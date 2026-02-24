@@ -8,6 +8,7 @@ import ModalitySelection from "./pages/ModalitySelection";
 import MaterialSelection from "./pages/MaterialSelection";
 import ImageUpload from "./pages/ImageUpload";
 import Results from "./pages/Results";
+import Reports from "./pages/Reports";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -24,6 +25,7 @@ const App = () => (
           <Route path="/material" element={<MaterialSelection />} />
           <Route path="/upload" element={<ImageUpload />} />
           <Route path="/results" element={<Results />} />
+          <Route path="/reports" element={<Reports />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

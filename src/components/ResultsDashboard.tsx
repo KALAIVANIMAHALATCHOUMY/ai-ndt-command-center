@@ -1,6 +1,8 @@
 import { motion } from "framer-motion";
-import { Download, RotateCcw, GitCompare, AlertTriangle, Shield, Gauge } from "lucide-react";
+import { Download, RotateCcw, AlertTriangle, Gauge } from "lucide-react";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import jsPDF from "jspdf";
 
 interface Props {
   modality: string;
@@ -23,21 +25,47 @@ const barData = [
 
 const ResultsDashboard = ({ modality, material }: Props) => {
   const [pipelineOpen, setPipelineOpen] = useState(false);
+  const navigate = useNavigate();
   const overallRisk = "HIGH";
   const overallConfidence = 89;
+
+  const handleDownloadPDF = () => {
+    const doc = new jsPDF();
+    doc.setFontSize(18);
+    doc.text("NDT AI Inspection Report", 20, 20);
+    doc.setFontSize(12);
+    doc.text(`Modality: ${modality.toUpperCase()}`, 20, 35);
+    doc.text(`Material: ${material.replace("-", " ").toUpperCase()}`, 20, 45);
+    doc.text(`Risk Level: ${overallRisk}`, 20, 55);
+    doc.text(`Overall Confidence: ${overallConfidence}%`, 20, 65);
+    doc.text("Detected Defects:", 20, 80);
+    defects.forEach((d, i) => {
+      doc.text(`${i + 1}. ${d.label} — Confidence: ${d.confidence}%, Severity: ${d.severity}, Depth: ${d.depth}`, 25, 92 + i * 12);
+    });
+    doc.text("Defect Probability Distribution:", 20, 135);
+    barData.forEach((b, i) => {
+      doc.text(`${b.label}: ${b.value}%`, 25, 147 + i * 10);
+    });
+    doc.setFontSize(9);
+    doc.text(`Generated: ${new Date().toLocaleString()}`, 20, 280);
+    doc.save(`NDT_Report_${modality}_${material}_${Date.now()}.pdf`);
+  };
 
   return (
     <div className="space-y-6">
       {/* Action buttons */}
       <div className="flex flex-wrap gap-3">
-        <button className="bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-display font-semibold flex items-center gap-2 hover:bg-primary/90 transition-colors">
+        <button
+          onClick={handleDownloadPDF}
+          className="bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-display font-semibold flex items-center gap-2 hover:bg-primary/90 transition-colors"
+        >
           <Download className="w-4 h-4" /> Download Report (PDF)
         </button>
-        <button className="bg-secondary text-foreground px-4 py-2 rounded-md text-sm font-display font-semibold flex items-center gap-2 hover:bg-secondary/80 transition-colors border border-border">
+        <button
+          onClick={() => navigate("/upload")}
+          className="bg-secondary text-foreground px-4 py-2 rounded-md text-sm font-display font-semibold flex items-center gap-2 hover:bg-secondary/80 transition-colors border border-border"
+        >
           <RotateCcw className="w-4 h-4" /> Re-run Analysis
-        </button>
-        <button className="bg-secondary text-foreground px-4 py-2 rounded-md text-sm font-display font-semibold flex items-center gap-2 hover:bg-secondary/80 transition-colors border border-border">
-          <GitCompare className="w-4 h-4" /> Compare Previous
         </button>
       </div>
 
