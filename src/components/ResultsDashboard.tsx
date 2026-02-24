@@ -1,6 +1,8 @@
 import { motion } from "framer-motion";
-import { Download, RotateCcw, GitCompare, AlertTriangle, Shield, Gauge } from "lucide-react";
+import { Download, RotateCcw, AlertTriangle, Gauge } from "lucide-react";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import jsPDF from "jspdf";
 
 interface Props {
   modality: string;
