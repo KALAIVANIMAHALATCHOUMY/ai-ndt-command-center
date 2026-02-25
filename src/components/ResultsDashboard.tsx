@@ -3,31 +3,37 @@ import { Download, RotateCcw, AlertTriangle, Gauge } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import jsPDF from "jspdf";
+import type { AnalysisResult } from "@/lib/analyzeDefect";
 
 interface Props {
   modality: string;
   material: string;
+  analysisResult?: AnalysisResult | null;
 }
 
-const defects = [
-  { label: "Surface Crack", confidence: 94, severity: "High", depth: "2.3mm", x: 35, y: 40 },
-  { label: "Micro-Porosity", confidence: 78, severity: "Medium", depth: "0.8mm", x: 65, y: 55 },
-  { label: "Inclusion", confidence: 67, severity: "Low", depth: "1.1mm", x: 50, y: 70 },
+const defaultDefects = [
+  { label: "Surface Crack", confidence: 94, severity: "High" as const, depth: "2.3mm", x: 35, y: 40 },
+  { label: "Micro-Porosity", confidence: 78, severity: "Medium" as const, depth: "0.8mm", x: 65, y: 55 },
+  { label: "Inclusion", confidence: 67, severity: "Low" as const, depth: "1.1mm", x: 50, y: 70 },
 ];
 
-const barData = [
-  { label: "Crack", value: 94, color: "bg-ndt-danger" },
-  { label: "Porosity", value: 78, color: "bg-ndt-warning" },
-  { label: "Inclusion", value: 67, color: "bg-primary" },
-  { label: "Void", value: 23, color: "bg-ndt-success" },
-  { label: "Delamination", value: 12, color: "bg-muted-foreground" },
+const defaultBarData = [
+  { label: "Crack", value: 94 },
+  { label: "Porosity", value: 78 },
+  { label: "Inclusion", value: 67 },
+  { label: "Void", value: 23 },
+  { label: "Delamination", value: 12 },
 ];
 
-const ResultsDashboard = ({ modality, material }: Props) => {
+const ResultsDashboard = ({ modality, material, analysisResult }: Props) => {
   const [pipelineOpen, setPipelineOpen] = useState(false);
   const navigate = useNavigate();
-  const overallRisk = "HIGH";
-  const overallConfidence = 89;
+
+  const defects = analysisResult?.defects || defaultDefects;
+  const barData = analysisResult?.defectProbabilities || defaultBarData;
+  const overallRisk = analysisResult?.overallRisk || "HIGH";
+  const overallConfidence = analysisResult?.overallConfidence || 89;
+  const crackDepths = analysisResult?.crackDepths || [0.4, 0.8, 1.1, 1.8, 2.3, 1.5, 0.9];
 
   const handleDownloadPDF = () => {
     const doc = new jsPDF();
@@ -185,7 +191,7 @@ const ResultsDashboard = ({ modality, material }: Props) => {
                   <span className="text-xs font-mono text-muted-foreground w-24">{bar.label}</span>
                   <div className="flex-1 h-5 bg-muted rounded-sm overflow-hidden">
                     <motion.div
-                      className={`h-full ${bar.color} rounded-sm`}
+                      className={`h-full rounded-sm ${bar.value > 80 ? "bg-ndt-danger" : bar.value > 50 ? "bg-ndt-warning" : bar.value > 30 ? "bg-primary" : "bg-muted-foreground"}`}
                       initial={{ width: 0 }}
                       animate={{ width: `${bar.value}%` }}
                       transition={{ delay: 0.3 + i * 0.1, duration: 0.8 }}
@@ -201,7 +207,7 @@ const ResultsDashboard = ({ modality, material }: Props) => {
           <div className="bg-card border border-border rounded-lg p-4">
             <h4 className="text-xs font-mono text-muted-foreground uppercase mb-3">Crack Depth Scale</h4>
             <div className="flex items-end gap-1 h-16">
-              {[0.4, 0.8, 1.1, 1.8, 2.3, 1.5, 0.9].map((depth, i) => (
+              {crackDepths.map((depth, i) => (
                 <motion.div
                   key={i}
                   className="flex-1 bg-primary/80 rounded-t-sm"

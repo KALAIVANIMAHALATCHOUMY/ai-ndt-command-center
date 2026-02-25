@@ -27,6 +27,10 @@ const ImageUpload = () => {
   }, [handleFile]);
 
   const handleRunInspection = () => {
+    // Store image in sessionStorage so Results page can access it
+    if (preview) {
+      sessionStorage.setItem("ndt-image", preview);
+    }
     navigate(`/results?modality=${modality}&material=${material}`);
   };
 

@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
 import AppSidebar from "@/components/AppSidebar";
 import ProcessingOverlay from "@/components/ProcessingOverlay";
 import ResultsDashboard from "@/components/ResultsDashboard";
 import PipelineFlow from "@/components/PipelineFlow";
 import WaveformBackground from "@/components/WaveformBackground";
+import { analyzeDefectImage, type AnalysisResult } from "@/lib/analyzeDefect";
 
 const Results = () => {
   const [searchParams] = useSearchParams();
@@ -13,14 +15,34 @@ const Results = () => {
   const material = searchParams.get("material") || "stainless-steel";
   const [processing, setProcessing] = useState(true);
   const [showResults, setShowResults] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setProcessing(false);
-      setTimeout(() => setShowResults(true), 300);
-    }, 6000);
-    return () => clearTimeout(timer);
-  }, []);
+    const imageBase64 = sessionStorage.getItem("ndt-image");
+
+    if (imageBase64) {
+      // Real AI analysis
+      analyzeDefectImage(imageBase64, modality, material)
+        .then((result) => {
+          setAnalysisResult(result);
+          setProcessing(false);
+          setTimeout(() => setShowResults(true), 300);
+        })
+        .catch((err) => {
+          console.error("Analysis failed:", err);
+          toast.error("AI analysis failed. Showing demo results.");
+          setProcessing(false);
+          setTimeout(() => setShowResults(true), 300);
+        });
+    } else {
+      // No image — use demo mode with timer
+      const timer = setTimeout(() => {
+        setProcessing(false);
+        setTimeout(() => setShowResults(true), 300);
+      }, 6000);
+      return () => clearTimeout(timer);
+    }
+  }, [modality, material]);
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -43,15 +65,13 @@ const Results = () => {
           </div>
         </div>
 
-        {/* Processing overlay */}
         <AnimatePresence>
           {processing && <ProcessingOverlay />}
         </AnimatePresence>
 
-        {/* Results */}
         {showResults && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="relative z-10 p-6 space-y-6">
-            <ResultsDashboard modality={modality} material={material} />
+            <ResultsDashboard modality={modality} material={material} analysisResult={analysisResult} />
             <PipelineFlow />
           </motion.div>
         )}
