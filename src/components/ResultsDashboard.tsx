@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { Download, RotateCcw, AlertTriangle, Gauge } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import jsPDF from "jspdf";
 import type { AnalysisResult } from "@/lib/analyzeDefect";
@@ -12,28 +12,39 @@ interface Props {
 }
 
 const defaultDefects = [
-  { label: "Surface Crack", confidence: 94, severity: "High" as const, depth: "2.3mm", x: 35, y: 40 },
-  { label: "Micro-Porosity", confidence: 78, severity: "Medium" as const, depth: "0.8mm", x: 65, y: 55 },
-  { label: "Inclusion", confidence: 67, severity: "Low" as const, depth: "1.1mm", x: 50, y: 70 },
+  { label: "Pitted Surface", confidence: 50, severity: "High" as const, depth: "1.2mm", x: 45, y: 50 },
+  { label: "Inclusion", confidence: 31, severity: "Medium" as const, depth: "0.6mm", x: 60, y: 40 },
+  { label: "Scratches", confidence: 7, severity: "Low" as const, depth: "0.3mm", x: 30, y: 65 },
 ];
 
 const defaultBarData = [
-  { label: "Crack", value: 94 },
-  { label: "Porosity", value: 78 },
-  { label: "Inclusion", value: 67 },
-  { label: "Void", value: 23 },
-  { label: "Delamination", value: 12 },
+  { label: "Crazing", value: 5 },
+  { label: "Inclusion", value: 31 },
+  { label: "Patches", value: 4 },
+  { label: "Pitted Surface", value: 50 },
+  { label: "Rolled-in Scale", value: 3 },
+  { label: "Scratches", value: 7 },
+  { label: "Porosity", value: 0 },
 ];
 
 const ResultsDashboard = ({ modality, material, analysisResult }: Props) => {
-  const [pipelineOpen, setPipelineOpen] = useState(false);
   const navigate = useNavigate();
+  const [uploadedImage, setUploadedImage] = useState<string | null>(null);
+
+  useEffect(() => {
+    const img = sessionStorage.getItem("ndt-image");
+    if (img) setUploadedImage(img);
+  }, []);
 
   const defects = analysisResult?.defects || defaultDefects;
   const barData = analysisResult?.defectProbabilities || defaultBarData;
   const overallRisk = analysisResult?.overallRisk || "HIGH";
   const overallConfidence = analysisResult?.overallConfidence || 89;
   const crackDepths = analysisResult?.crackDepths || [0.4, 0.8, 1.1, 1.8, 2.3, 1.5, 0.9];
+  const summary = analysisResult?.summary || "";
+
+  // Find the top prediction
+  const topDefect = [...barData].sort((a, b) => b.value - a.value)[0];
 
   const handleDownloadPDF = () => {
     const doc = new jsPDF();
@@ -44,13 +55,16 @@ const ResultsDashboard = ({ modality, material, analysisResult }: Props) => {
     doc.text(`Material: ${material.replace("-", " ").toUpperCase()}`, 20, 45);
     doc.text(`Risk Level: ${overallRisk}`, 20, 55);
     doc.text(`Overall Confidence: ${overallConfidence}%`, 20, 65);
-    doc.text("Detected Defects:", 20, 80);
+    if (summary) {
+      doc.text(`Summary: ${summary}`, 20, 75);
+    }
+    doc.text("Detected Defects:", 20, 90);
     defects.forEach((d, i) => {
-      doc.text(`${i + 1}. ${d.label} — Confidence: ${d.confidence}%, Severity: ${d.severity}, Depth: ${d.depth}`, 25, 92 + i * 12);
+      doc.text(`${i + 1}. ${d.label} — Confidence: ${d.confidence}%, Severity: ${d.severity}, Depth: ${d.depth}`, 25, 102 + i * 12);
     });
-    doc.text("Defect Probability Distribution:", 20, 135);
+    doc.text("Defect Probability Distribution:", 20, 145);
     barData.forEach((b, i) => {
-      doc.text(`${b.label}: ${b.value}%`, 25, 147 + i * 10);
+      doc.text(`${b.label}: ${b.value}%`, 25, 157 + i * 10);
     });
     doc.setFontSize(9);
     doc.text(`Generated: ${new Date().toLocaleString()}`, 20, 280);
@@ -77,27 +91,42 @@ const ResultsDashboard = ({ modality, material, analysisResult }: Props) => {
 
       {/* Main two-panel layout */}
       <div className="grid lg:grid-cols-2 gap-6">
-        {/* Left: Annotated Image */}
+        {/* Left: Uploaded Image with Predictions */}
         <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           className="bg-card border border-border rounded-lg overflow-hidden"
         >
           <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-            <h3 className="font-display font-semibold text-foreground text-sm">Annotated Output</h3>
-            <span className="text-xs font-mono text-muted-foreground">Instance Segmentation + Depth Map</span>
+            <h3 className="font-display font-semibold text-foreground text-sm">Defect Classification Output</h3>
+            <span className="text-xs font-mono text-muted-foreground">EfficientNetB0 + Gemini Vision</span>
           </div>
-          <div className="relative aspect-[4/3] bg-muted">
-            {/* Simulated image with defect overlays */}
-            <div className="absolute inset-0" style={{
-              background: `
-                linear-gradient(135deg, hsl(214 29% 15%) 0%, hsl(210 30% 12%) 100%),
-                repeating-linear-gradient(0deg, transparent, transparent 20px, hsl(186 100% 50% / 0.03) 20px, hsl(186 100% 50% / 0.03) 21px),
-                repeating-linear-gradient(90deg, transparent, transparent 20px, hsl(186 100% 50% / 0.03) 20px, hsl(186 100% 50% / 0.03) 21px)
-              `
-            }} />
 
-            {/* Defect annotations */}
+          {/* Prediction text output */}
+          <div className="px-4 py-3 bg-muted/50 border-b border-border font-mono text-xs space-y-0.5">
+            {barData.map((b) => (
+              <div key={b.label} className="text-muted-foreground">
+                <span className="text-foreground">{b.label.toLowerCase().replace(/\s+/g, '_')}</span>: <span className="text-primary">{b.value.toFixed(2)}%</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Top Prediction label */}
+          {topDefect && (
+            <div className="px-4 py-2 text-sm font-mono text-center border-b border-border bg-muted/30">
+              Top Prediction: <span className="text-primary font-semibold">{topDefect.label}</span> ({topDefect.value.toFixed(2)}%)
+            </div>
+          )}
+
+          {/* Uploaded image display */}
+          <div className="relative aspect-[4/3] bg-muted flex items-center justify-center">
+            {uploadedImage ? (
+              <img src={uploadedImage} alt="Uploaded NDT image" className="w-full h-full object-contain" />
+            ) : (
+              <div className="text-muted-foreground text-sm font-mono">No image available</div>
+            )}
+
+            {/* Defect annotations overlay */}
             {defects.map((d, i) => (
               <motion.div
                 key={i}
@@ -107,35 +136,17 @@ const ResultsDashboard = ({ modality, material, analysisResult }: Props) => {
                 className="absolute"
                 style={{ left: `${d.x}%`, top: `${d.y}%`, transform: "translate(-50%, -50%)" }}
               >
-                {/* Bounding box */}
-                <div className={`w-20 h-16 border-2 rounded-sm ${
+                <div className={`w-16 h-12 border-2 rounded-sm ${
                   d.severity === "High" ? "border-ndt-danger" : d.severity === "Medium" ? "border-ndt-warning" : "border-primary"
-                }`} style={{ boxShadow: `0 0 10px ${d.severity === "High" ? "hsl(0 85% 55% / 0.4)" : "hsl(186 100% 50% / 0.3)"}` }}>
-                  <div className={`absolute -top-5 left-0 text-[9px] font-mono px-1.5 py-0.5 rounded ${
+                }`} style={{ boxShadow: `0 0 8px ${d.severity === "High" ? "hsl(0 85% 55% / 0.4)" : "hsl(186 100% 50% / 0.3)"}` }}>
+                  <div className={`absolute -top-5 left-0 text-[8px] font-mono px-1 py-0.5 rounded whitespace-nowrap ${
                     d.severity === "High" ? "bg-ndt-danger text-foreground" : d.severity === "Medium" ? "bg-ndt-warning text-background" : "bg-primary text-primary-foreground"
                   }`}>
                     {d.label} ({d.confidence}%)
                   </div>
                 </div>
-                {/* Segmentation mask */}
-                <div className="absolute inset-1 rounded-sm opacity-20" style={{
-                  background: d.severity === "High" ? "hsl(0 85% 55%)" : d.severity === "Medium" ? "hsl(40 100% 55%)" : "hsl(186 100% 50%)"
-                }} />
               </motion.div>
             ))}
-
-            {/* Crack depth line overlay */}
-            <svg className="absolute inset-0 w-full h-full pointer-events-none">
-              <motion.line
-                x1="25%" y1="30%" x2="60%" y2="60%"
-                stroke="hsl(0 85% 55%)"
-                strokeWidth="2"
-                strokeDasharray="5,3"
-                initial={{ pathLength: 0 }}
-                animate={{ pathLength: 1 }}
-                transition={{ delay: 1, duration: 1.5 }}
-              />
-            </svg>
           </div>
         </motion.div>
 
@@ -147,24 +158,24 @@ const ResultsDashboard = ({ modality, material, analysisResult }: Props) => {
         >
           {/* Risk + Confidence Row */}
           <div className="grid grid-cols-2 gap-4">
-            {/* Risk Level */}
             <div className="bg-card border border-border rounded-lg p-4">
               <div className="flex items-center gap-2 mb-3">
                 <AlertTriangle className="w-4 h-4 text-ndt-danger" />
                 <span className="text-xs font-mono text-muted-foreground uppercase">Risk Level</span>
               </div>
-              <p className="text-3xl font-display font-bold text-ndt-danger">{overallRisk}</p>
+              <p className={`text-3xl font-display font-bold ${
+                overallRisk === "CRITICAL" || overallRisk === "HIGH" ? "text-ndt-danger" : overallRisk === "MEDIUM" ? "text-ndt-warning" : "text-ndt-success"
+              }`}>{overallRisk}</p>
               <div className="mt-2 h-2 bg-muted rounded-full overflow-hidden">
                 <motion.div
                   className="h-full bg-gradient-to-r from-ndt-warning to-ndt-danger rounded-full"
                   initial={{ width: 0 }}
-                  animate={{ width: "85%" }}
+                  animate={{ width: overallRisk === "CRITICAL" ? "100%" : overallRisk === "HIGH" ? "85%" : overallRisk === "MEDIUM" ? "55%" : "25%" }}
                   transition={{ delay: 0.5, duration: 1 }}
                 />
               </div>
             </div>
 
-            {/* Confidence Gauge */}
             <div className="bg-card border border-border rounded-lg p-4">
               <div className="flex items-center gap-2 mb-3">
                 <Gauge className="w-4 h-4 text-primary" />
@@ -188,16 +199,16 @@ const ResultsDashboard = ({ modality, material, analysisResult }: Props) => {
             <div className="space-y-3">
               {barData.map((bar, i) => (
                 <div key={bar.label} className="flex items-center gap-3">
-                  <span className="text-xs font-mono text-muted-foreground w-24">{bar.label}</span>
+                  <span className="text-xs font-mono text-muted-foreground w-28 truncate">{bar.label}</span>
                   <div className="flex-1 h-5 bg-muted rounded-sm overflow-hidden">
                     <motion.div
-                      className={`h-full rounded-sm ${bar.value > 80 ? "bg-ndt-danger" : bar.value > 50 ? "bg-ndt-warning" : bar.value > 30 ? "bg-primary" : "bg-muted-foreground"}`}
+                      className={`h-full rounded-sm ${bar.value > 40 ? "bg-ndt-danger" : bar.value > 20 ? "bg-ndt-warning" : bar.value > 10 ? "bg-primary" : "bg-muted-foreground"}`}
                       initial={{ width: 0 }}
                       animate={{ width: `${bar.value}%` }}
                       transition={{ delay: 0.3 + i * 0.1, duration: 0.8 }}
                     />
                   </div>
-                  <span className="text-xs font-mono text-foreground w-10 text-right">{bar.value}%</span>
+                  <span className="text-xs font-mono text-foreground w-12 text-right">{bar.value.toFixed(1)}%</span>
                 </div>
               ))}
             </div>
@@ -205,7 +216,7 @@ const ResultsDashboard = ({ modality, material, analysisResult }: Props) => {
 
           {/* Crack Depth Scale */}
           <div className="bg-card border border-border rounded-lg p-4">
-            <h4 className="text-xs font-mono text-muted-foreground uppercase mb-3">Crack Depth Scale</h4>
+            <h4 className="text-xs font-mono text-muted-foreground uppercase mb-3">Defect Depth Scale</h4>
             <div className="flex items-end gap-1 h-16">
               {crackDepths.map((depth, i) => (
                 <motion.div
@@ -251,6 +262,14 @@ const ResultsDashboard = ({ modality, material, analysisResult }: Props) => {
               ))}
             </div>
           </div>
+
+          {/* Summary */}
+          {summary && (
+            <div className="bg-card border border-border rounded-lg p-4">
+              <h4 className="text-xs font-mono text-muted-foreground uppercase mb-2">AI Summary</h4>
+              <p className="text-sm text-foreground">{summary}</p>
+            </div>
+          )}
         </motion.div>
       </div>
     </div>

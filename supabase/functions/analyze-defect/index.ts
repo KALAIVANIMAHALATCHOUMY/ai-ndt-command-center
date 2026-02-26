@@ -30,6 +30,10 @@ serve(async (req) => {
 
 Analyze the provided NDT image and return a structured defect analysis. The inspection uses ${modality || "ultrasonic"} modality on ${material || "stainless steel"} material.
 
+The defect categories you should classify are: Crazing, Inclusion, Patches, Pitted Surface, Rolled-in Scale, Scratches, and Porosity. These are based on the NEU Surface Defect Database classes.
+
+For defectProbabilities, always return probabilities for ALL 7 categories even if some are 0.
+
 You MUST respond by calling the report_defects function with your analysis.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -101,7 +105,7 @@ You MUST respond by calling the report_defects function with your analysis.`;
                       required: ["label", "value"],
                       additionalProperties: false,
                     },
-                    description: "Probability distribution across defect types (Crack, Porosity, Inclusion, Void, Delamination, Pitting)",
+                    description: "Probability distribution across defect types (Crazing, Inclusion, Patches, Pitted Surface, Rolled-in Scale, Scratches, Porosity)",
                   },
                   crackDepths: {
                     type: "array",
