@@ -5,7 +5,7 @@ import { Radio, Eye, Thermometer, ArrowRight } from "lucide-react";
 const modalities = [
   {
     id: "ultrasonic",
-    title: "Ultrasonic Surface Analysis",
+    title: "Ultrasound Face Analysis",
     icon: Radio,
     description: "Phased-array ultrasonic testing for subsurface flaw detection. Capable of detecting voids, inclusions, and delamination up to 300mm depth.",
     specs: ["Frequency: 1-10 MHz", "Depth: 0-300mm", "Resolution: 0.1mm"],
